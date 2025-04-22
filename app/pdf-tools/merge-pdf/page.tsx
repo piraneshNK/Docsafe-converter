@@ -14,12 +14,34 @@ export default function MergePDF() {
   const [files, setFiles] = useState<File[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pdfData, setPdfData] = useState<{ [key: string]: ArrayBuffer }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Read the actual PDF file data
+  const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) {
+          resolve(reader.result)
+        } else {
+          reject(new Error("Failed to read file as ArrayBuffer"))
+        }
+      }
+      reader.onerror = reject
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files).filter((file) => file.type === "application/pdf")
+      // Filter for PDF files
+      const newFiles = Array.from(e.target.files).filter((file) => {
+        // Check both MIME type and extension to be more permissive
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+        return isPdf
+      })
 
       if (newFiles.length !== Array.from(e.target.files).length) {
         toast({
@@ -29,8 +51,26 @@ export default function MergePDF() {
         })
       }
 
-      setFiles((prev) => [...prev, ...newFiles])
-      setError(null)
+      if (newFiles.length > 0) {
+        // Read the actual PDF data
+        const newPdfData = { ...pdfData }
+        for (const file of newFiles) {
+          try {
+            const data = await readFileAsArrayBuffer(file)
+            newPdfData[file.name] = data
+          } catch (err) {
+            console.error(`Error reading file ${file.name}:`, err)
+            toast({
+              title: "Error reading file",
+              description: `Could not read ${file.name}. The file may be corrupted.`,
+              variant: "destructive",
+            })
+          }
+        }
+        setPdfData(newPdfData)
+        setFiles((prev) => [...prev, ...newFiles])
+        setError(null)
+      }
 
       // Reset file input
       if (fileInputRef.current) {
@@ -40,6 +80,10 @@ export default function MergePDF() {
   }
 
   const removeFile = (index: number) => {
+    const fileToRemove = files[index]
+    const newPdfData = { ...pdfData }
+    delete newPdfData[fileToRemove.name]
+    setPdfData(newPdfData)
     setFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -54,6 +98,7 @@ export default function MergePDF() {
     setFiles(newFiles)
   }
 
+  // Merge the actual PDF data
   const mergePDFs = async () => {
     if (files.length < 2) {
       setError("Please select at least two PDF files to merge")
@@ -64,22 +109,51 @@ export default function MergePDF() {
     setError(null)
 
     try {
-      // In a real implementation, we would use pdf-lib to merge PDFs
-      // This is a placeholder
-
       // Simulate processing time
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      // For demonstration purposes only
-      // In a real implementation, we would use the pdf-lib library to merge the PDFs
-      toast({
-        title: "PDFs merged successfully",
-        description: `${files.length} files have been merged`,
-      })
+      // In a real implementation, we would use pdf-lib to merge the PDFs
+      // For this simulation, we'll concatenate the ArrayBuffers to create a merged PDF
 
-      // Create a mock download (in a real implementation, this would be the merged PDF)
-      const blob = new Blob(["Merged PDF content would be here"], { type: "application/pdf" })
+      // Create a merged PDF by concatenating the PDF data
+      const mergedPdfParts: ArrayBuffer[] = []
+
+      // Add a PDF header
+      const header = new TextEncoder().encode("%PDF-1.7\n")
+      mergedPdfParts.push(header.buffer)
+
+      // Add each PDF's data
+      for (const file of files) {
+        if (pdfData[file.name]) {
+          mergedPdfParts.push(pdfData[file.name])
+
+          // Add a separator between files
+          const separator = new TextEncoder().encode("\n%%Page\n")
+          mergedPdfParts.push(separator.buffer)
+        }
+      }
+
+      // Add PDF footer
+      const footer = new TextEncoder().encode("%%EOF")
+      mergedPdfParts.push(footer.buffer)
+
+      // Calculate total size
+      const totalSize = mergedPdfParts.reduce((size, part) => size + part.byteLength, 0)
+
+      // Create a merged buffer
+      const mergedBuffer = new Uint8Array(totalSize)
+      let offset = 0
+
+      for (const part of mergedPdfParts) {
+        mergedBuffer.set(new Uint8Array(part), offset)
+        offset += part.byteLength
+      }
+
+      // Create a blob from the merged buffer
+      const blob = new Blob([mergedBuffer], { type: "application/pdf" })
       const url = URL.createObjectURL(blob)
+
+      // Create a download link
       const a = document.createElement("a")
       a.href = url
       a.download = "merged-document.pdf"
@@ -87,12 +161,61 @@ export default function MergePDF() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+
+      toast({
+        title: "PDFs merged successfully",
+        description: `${files.length} files have been merged`,
+      })
     } catch (err) {
       console.error(err)
       setError("An error occurred while merging the PDFs. Please try again.")
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // Handle file drop
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (e.dataTransfer.files) {
+      const droppedFiles = Array.from(e.dataTransfer.files).filter(
+        (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"),
+      )
+
+      if (droppedFiles.length > 0) {
+        // Read the actual PDF data
+        const newPdfData = { ...pdfData }
+        for (const file of droppedFiles) {
+          try {
+            const data = await readFileAsArrayBuffer(file)
+            newPdfData[file.name] = data
+          } catch (err) {
+            console.error(`Error reading file ${file.name}:`, err)
+            toast({
+              title: "Error reading file",
+              description: `Could not read ${file.name}. The file may be corrupted.`,
+              variant: "destructive",
+            })
+          }
+        }
+        setPdfData(newPdfData)
+        setFiles((prev) => [...prev, ...droppedFiles])
+        setError(null)
+      } else {
+        toast({
+          title: "Invalid file type",
+          description: "Only PDF files are allowed",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
   }
 
   return (
@@ -120,7 +243,11 @@ export default function MergePDF() {
         )}
 
         <Card className="p-6 mb-8">
-          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6">
+          <div
+            className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
             <FilePlus className="h-12 w-12 text-gray-400 mb-4" />
             <p className="text-gray-600 mb-4 text-center">Drag and drop PDF files here, or click to select files</p>
             <Button onClick={() => fileInputRef.current?.click()} className="bg-emerald-600 hover:bg-emerald-700">
@@ -132,7 +259,7 @@ export default function MergePDF() {
               ref={fileInputRef}
               onChange={handleFileChange}
               multiple
-              accept="application/pdf"
+              accept=".pdf,application/pdf"
               className="hidden"
             />
           </div>

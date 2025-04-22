@@ -10,7 +10,7 @@ export default function Home() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
-            <Shield className="h-6 w-6 text-emerald-600" />
+            <Shield className="h-8 w-8 text-emerald-600" />
             <span className="font-bold text-xl">DocSafeConverter</span>
           </Link>
           <nav className="hidden md:flex items-center space-x-6">

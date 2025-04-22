@@ -166,7 +166,7 @@ export default function ImageResizer() {
             ctx.drawImage(img, 0, 0, newWidth, newHeight)
 
             // Convert to image and download
-            const dataUrl = canvas.toDataURL(file.type)
+            const dataUrl = canvas.toDataURL(file.type || "image/jpeg")
 
             // Create download link
             const a = document.createElement("a")

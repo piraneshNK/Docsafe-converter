@@ -361,7 +361,7 @@ export default function ImageCropper() {
           ctx.drawImage(img, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight)
 
           // Convert to image and download
-          const dataUrl = canvas.toDataURL(file.type)
+          const dataUrl = canvas.toDataURL(file.type || "image/jpeg")
 
           // Create download link
           const a = document.createElement("a")

@@ -131,7 +131,7 @@ export default function ImageCompressor() {
               fileName: file.name,
               originalSize,
               compressedSize,
-              reduction,
+              reduction: Math.max(0, reduction), // Ensure reduction is not negative
             })
 
             // Create download link

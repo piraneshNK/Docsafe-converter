@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, Shield, FileText, ImageIcon, Github } from "lucide-react"
+import { ArrowLeft, Shield, FileText, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function About() {
@@ -91,29 +91,6 @@ export default function About() {
               </div>
             </div>
             <p className="text-gray-600">All our tools are designed to be simple, fast, and privacy-focused.</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="flex items-center mb-6">
-              <Github className="h-10 w-10 text-emerald-600 mr-4" />
-              <h2 className="text-2xl font-bold">Open Source</h2>
-            </div>
-            <p className="text-gray-600 mb-4">
-              DocSafeConverter is an open-source project. We believe in transparency and community collaboration.
-            </p>
-            <p className="text-gray-600 mb-4">By making our code open source, we allow anyone to:</p>
-            <ul className="list-disc pl-6 space-y-2 text-gray-600 mb-4">
-              <li>Verify that we're not collecting or transmitting your data</li>
-              <li>Contribute improvements and new features</li>
-              <li>Report bugs and security issues</li>
-              <li>Learn from our implementation</li>
-            </ul>
-            <div className="flex justify-center">
-              <Button className="bg-gray-800 hover:bg-gray-900">
-                <Github className="mr-2 h-4 w-4" />
-                View on GitHub
-              </Button>
-            </div>
           </div>
         </div>
       </div>
